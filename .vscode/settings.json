@@ -1,0 +1,15 @@
+{
+    "cmake.configureArgs": ["-DBOARD=hpm5301evklite"],
+    "cmake.defaultVariants": {
+        "buildType": {
+            "default": "flash_xip",
+            "choices": {
+                "flash_xip": {
+                    "short": "flash_xip",
+                    "long": "FLASH",
+                    "buildType": "flash_xip"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../../../../../../tools/HPMicro/sdk_env/hpm_sdk"
+		},
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"cortex-debug.variableUseNaturalFormat": false
+	}
+}
