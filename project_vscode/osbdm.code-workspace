@@ -8,6 +8,35 @@
 		}
 	],
 	"settings": {
-		"cortex-debug.variableUseNaturalFormat": false
+		"cortex-debug.variableUseNaturalFormat": false,
+		"files.exclude": {
+			"boards/hpm5300evk": true,
+			"boards/hpm6200evk": true,
+			"boards/hpm6300evk": true,
+			"boards/hpm6750evk": true,
+			"boards/hpm6750evk2": true,
+			"boards/hpm6750evkmini": true,
+			"boards/hpm6800evk": true,
+			"boards/hpm6e00evk": true,
+			"samples1": true
+		},
+		"search.exclude": {
+			"boards/hpm5300evk": true,
+			"boards/hpm6200evk": true,
+			"boards/hpm6300evk": true,
+			"boards/hpm6750evk": true,
+			"boards/hpm6750evk2": true,
+			"boards/hpm6750evkmini": true,
+			"boards/hpm6800evk": true,
+			"boards/hpm6e00evk": true,
+			"samples": true
+		},
+		"files.associations": {
+			"usbd_core.h": "c",
+			"usb_osbdm.h": "c",
+			"iomanip": "c",
+			"usb_user_api.h": "c",
+			"cmd_processing.h": "c"
+		}
 	}
 }

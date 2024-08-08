@@ -14,7 +14,22 @@
             "runToEntryPoint": "main",
             "showDevDebugOutput": "none",
             "interface": "jtag",
-            "servertype": "jlink"
+            "servertype": "jlink",
+            "liveWatch": {
+                "enabled": true,
+                "samplesPerSecond": 3
+            },
+            "rttConfig": {
+                "enabled": true,
+                "address": "auto",
+                "decoders": [
+                    {
+                        "label": "",
+                        "port": 0,
+                        "type": "console"
+                    }
+                ]
+            }
         }
     ]
 }

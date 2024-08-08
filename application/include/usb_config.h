@@ -39,9 +39,9 @@
 
 /* descriptor common define */
 #define CONFIG_USBDEV_ADVANCE_DESC
-#define USBD_VID           0x15A2 /* freescale VID */
-#define USBD_PID           0xFFFF
-#define USBD_MAX_POWER     200
+#define USBD_VID       0x15A2 /* freescale VID */
+#define USBD_PID       0x0042
+#define USBD_MAX_POWER 200
 
 /* attribute data into no cache ram */
 #define USB_NOCACHE_RAM_SECTION __attribute__((section(".noncacheable")))
