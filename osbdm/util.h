@@ -20,6 +20,8 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_
 
+unsigned int ByteSwap16(unsigned int val);
+
 unsigned long getbuf4 (unsigned char *buf);
 unsigned int  getbuf2big (unsigned char *buf);
 unsigned int  getbuf2little (unsigned char *buf);

@@ -17,6 +17,8 @@ set(CONFIG_SEGGER_RTT 1)
 find_package(hpm-sdk REQUIRED HINTS $ENV{HPM_SDK_BASE})
 project(osbdm)
 
+sdk_compile_options("-O0")
+
 sdk_inc(application/include)
 
 # Application

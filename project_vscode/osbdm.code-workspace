@@ -30,13 +30,6 @@
 			"boards/hpm6800evk": true,
 			"boards/hpm6e00evk": true,
 			"samples": true
-		},
-		"files.associations": {
-			"usbd_core.h": "c",
-			"usb_osbdm.h": "c",
-			"iomanip": "c",
-			"usb_user_api.h": "c",
-			"cmd_processing.h": "c"
 		}
 	}
 }

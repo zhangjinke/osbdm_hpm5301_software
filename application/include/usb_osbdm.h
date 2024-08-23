@@ -34,9 +34,13 @@ extern "C" {
 *******************************************************************************/
 
 /**
- * \brief 初始化 OSBDM USB
+ * \brief 输入端点发送数据
  *
- * \param[in] busid 总线 ID，范围 0 ~ (CONFIG_USBDEV_MAX_BUS - 1)
+ * \param[in] p_data 指向待发送数据的指针
+ * \param[in] length 待发送数据长度，单位：字节
+ *
+ * \retval  0 成功
+ * \retval -1 失败
  */
 int32_t usb_osbdm_ep_in_send (uint8_t *p_data, uint32_t length);
 

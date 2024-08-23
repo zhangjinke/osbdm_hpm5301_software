@@ -249,8 +249,12 @@ static void __osbdm_ep_in_cb (uint8_t busid, uint8_t ep, uint32_t nbytes)
  */
 static void __osbdm_ep_out_cb (uint8_t busid, uint8_t ep, uint32_t nbytes)
 {
-    debug_cmd_pending = _g_osbdm_rx_buf[0];
-    memcpy(&EP1_Buffer[0], &_g_osbdm_rx_buf[0], nbytes);
+    if (debug_cmd_pending != 0) {
+        printf("pending cmd %02x, rx cmd %02x\n", debug_cmd_pending, _g_osbdm_rx_buf[0]);
+    } else {
+        debug_cmd_pending = _g_osbdm_rx_buf[0];
+        memcpy(&EP1_Buffer[0], &_g_osbdm_rx_buf[0], nbytes);
+    }
 
     /* 启动接收输出端点 */
     usbd_ep_start_read(busid, ep, _g_osbdm_rx_buf, sizeof(_g_osbdm_rx_buf));
@@ -299,7 +303,7 @@ static void __usbd_event_handler (uint8_t busid, uint8_t event)
 *******************************************************************************/
 
 /**
- * \brief 初始化 OSBDM USB
+ * \brief 输入端点发送数据
  */
 int32_t usb_osbdm_ep_in_send (uint8_t *p_data, uint32_t length)
 {

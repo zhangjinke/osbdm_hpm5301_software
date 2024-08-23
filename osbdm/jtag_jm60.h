@@ -20,6 +20,8 @@
 #ifndef _JTAG_JM60_H_
 #define _JTAG_JM60_H_
 
+#include "hpm_gpio_drv.h"
+
 #define JTAG_OK    0
 #define JTAG_ERROR 1
 
@@ -135,35 +137,58 @@
 #define TMS_HIGH 1
 #define TMS_LOW  0
 
+/** \brief TMS 引脚定义 */
+#define TMS_GPIO_INDEX GPIO_OE_GPIOA
+#define TMS_GPIO_PIN   28
+
+/** \brief TCK 引脚定义 */
+#define TCK_GPIO_INDEX GPIO_OE_GPIOA
+#define TCK_GPIO_PIN   27
+
+/** \brief TDI 引脚定义 */
+#define TDI_GPIO_INDEX GPIO_OE_GPIOB
+#define TDI_GPIO_PIN   13
+
+/** \brief TDO 引脚定义 */
+#define TDO_GPIO_INDEX GPIO_OE_GPIOB
+#define TDO_GPIO_PIN   12
+
+/** \brief SRST 引脚定义 */
+#define SRST_GPIO_INDEX GPIO_OE_GPIOB
+#define SRST_GPIO_PIN   15
+
+/** \brief JCOMP 引脚定义 */
+#define JCOMP_GPIO_INDEX GPIO_OE_GPIOB
+#define JCOMP_GPIO_PIN   14
+
 // JTAG Signal Macros
 
-#define TRST_SET()   TDSCLK_EN = 1
-#define TRST_RESET() TDSCLK_EN = 0
+#define TRST_SET()   gpio_set_port_low_with_mask(HPM_GPIO0, SRST_GPIO_INDEX, 1 << SRST_GPIO_PIN)
+#define TRST_RESET() gpio_set_port_high_with_mask(HPM_GPIO0, SRST_GPIO_INDEX, 1 << SRST_GPIO_PIN)
 
-#define TMS_SET()   BRK_TMS = 1
-#define TMS_RESET() BRK_TMS = 0
+#define TMS_SET()   gpio_set_port_high_with_mask(HPM_GPIO0, TMS_GPIO_INDEX, 1 << TMS_GPIO_PIN)
+#define TMS_RESET() gpio_set_port_low_with_mask(HPM_GPIO0, TMS_GPIO_INDEX, 1 << TMS_GPIO_PIN)
 
-#define TCLK_SET()   TCLK_EN = 1
-#define TCLK_RESET() TCLK_EN = 0
+#define TCLK_SET()   gpio_set_port_high_with_mask(HPM_GPIO0, TCK_GPIO_INDEX, 1 << TCK_GPIO_PIN)
+#define TCLK_RESET() gpio_set_port_low_with_mask(HPM_GPIO0, TCK_GPIO_INDEX, 1 << TCK_GPIO_PIN)
 
-#define TDI_OUT_SET()   DOUT = 1
-#define TDI_OUT_RESET() DOUT = 0
+#define TDI_OUT_SET()   gpio_set_port_high_with_mask(HPM_GPIO0, TDI_GPIO_INDEX, 1 << TDI_GPIO_PIN)
+#define TDI_OUT_RESET() gpio_set_port_low_with_mask(HPM_GPIO0, TDI_GPIO_INDEX, 1 << TDI_GPIO_PIN)
 
-#define TDO_IN_SET 0 // DIN == 1
+#define TDO_IN_SET gpio_read_port(HPM_GPIO0, TDO_GPIO_INDEX) & (1 << TDO_GPIO_PIN)
 
 
-typedef enum
-{
-  TEST_LOGIC_RESET,
-  RUN_TEST_IDLE,
-  PAUSE_DR,
-  PAUSE_IR,
-  SHIFT_DR,
-  SHIFT_IR,
-  UPDATE_DR,
-  UPDATE_IR,
+typedef enum {
+    TEST_LOGIC_RESET,
+    RUN_TEST_IDLE,
+    PAUSE_DR,
+    PAUSE_IR,
+    SHIFT_DR,
+    SHIFT_IR,
+    UPDATE_DR,
+    UPDATE_IR,
 
-  MAX_JTAG_STATE,
+    MAX_JTAG_STATE,
 
 } JTAG_STATE_TYPE;
 

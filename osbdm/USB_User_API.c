@@ -29,6 +29,8 @@
 
 #include "usb_osbdm.h"
 
+#include <stdio.h>
+
 // Global Variables
 
 // User Buffers
@@ -98,6 +100,7 @@ void EndPoint_IN (UINT8 u8Endp, UINT8 u8EPSize)
     // UINT8    *pu8UserBuffer;
     // UINT8    *pu8SIEBuffer;
     // UINT8     u8Counter;
+    int32_t err;
 
     switch (u8Endp) {
     case 1:
@@ -110,7 +113,10 @@ void EndPoint_IN (UINT8 u8Endp, UINT8 u8EPSize)
         // pu8BDT        = &EP2_Set;
         // pu8UserBuffer = &EP2_Buffer[0];
         // pu8SIEBuffer  = &EP2_BDT_Buffer[0];
-        usb_osbdm_ep_in_send(&EP2_Buffer[0], u8EPSize);
+        err = usb_osbdm_ep_in_send(&EP2_Buffer[0], u8EPSize);
+        if (err != 0) {
+            printf("ep in send error: %d\n", err);
+        }
         break;
 
     case 3:

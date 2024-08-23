@@ -59,7 +59,7 @@ extern byte VPP_Stat;  // holds VPP flash programming voltage status
 // BDM State Defines
 // #define ADP5		0x05	// single scan
 #define ADP5  0x25 // continuous scan
-#define RESET 0x01 // target is reset
+// #define RESET 0x01 // target is reset
 // #define HALTED		0x02				// target is halted
 
 

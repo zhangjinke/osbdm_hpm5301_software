@@ -22,7 +22,7 @@
 #include "util.h"
 
 
-/*
+
 unsigned int ByteSwap16(unsigned int val){
   unsigned char h = (val >> 8);	// shift high to low and save
   val = (val & 0xFF);	// mask high
@@ -39,7 +39,7 @@ unsigned int ByteSwap32(unsigned long val){
 
   return(a + b + c + d);
 }
-*/
+
 /*------------------------------------------------------------------------------------
    return a 32-bit value taking 4 bytes from an 8-bit buffer -- LSB first
    so INTEL processors can send us data their way

@@ -38,85 +38,85 @@ unsigned char bid1     = 0;
 unsigned char bid0     = 0;
 
 static const unsigned char adc_conv[] = {
-  // convert high 4 bits of the ADC result into a number 0-8
-  // board ID is decimal equivalent of 9*HighVal + LowVal resulting in a
-  // board ID of 0-81
-  0,
-  1,
-  1,
-  2,
-  2,
-  3,
-  3,
-  4,
-  4,
-  5,
-  5,
-  6,
-  6,
-  7,
-  7,
-  8};
+    // convert high 4 bits of the ADC result into a number 0-8
+    // board ID is decimal equivalent of 9*HighVal + LowVal resulting in a
+    // board ID of 0-81
+    0,
+    1,
+    1,
+    2,
+    2,
+    3,
+    3,
+    4,
+    4,
+    5,
+    5,
+    6,
+    6,
+    7,
+    7,
+    8};
 
 unsigned char read_board_id (void) // also places result in "board_id"
 {
-  // bid0     = 0;
-  // bid1     = 0;
-  // board_id = 0;
+    // bid0     = 0;
+    // bid1     = 0;
+    // board_id = 0;
 
-  // #if defined __CFV2__
-  //   // CFV234 do not support the version mechanism
-  // #else
-  //   ADCCFG = 0x13; // Internal ADC Clock  (00000011)
+    // #if defined __CFV2__
+    //   // CFV234 do not support the version mechanism
+    // #else
+    //   ADCCFG = 0x13; // Internal ADC Clock  (00000011)
 
-  // ADCSC1 = 0x02; // initiate an ADC conversion Channel 2
-  // while ((ADCSC1 & 0x80) != 0x80)
-  //   ;
-  // bid0 = ADCRL;
+    // ADCSC1 = 0x02; // initiate an ADC conversion Channel 2
+    // while ((ADCSC1 & 0x80) != 0x80)
+    //   ;
+    // bid0 = ADCRL;
 
-  // ADCSC1 = 0x04; // initiate an ADC conversion Channel 4
-  // while ((ADCSC1 & 0x80) != 0x80)
-  //   ;
-  // bid1 = ADCRL;
+    // ADCSC1 = 0x04; // initiate an ADC conversion Channel 4
+    // while ((ADCSC1 & 0x80) != 0x80)
+    //   ;
+    // bid1 = ADCRL;
 
-  // board_id = adc_conv[((bid1 & 0xF0) >> 4)] * 9 + adc_conv[((bid0 & 0xF0) >> 4)];
-  // #endif
+    // board_id = adc_conv[((bid1 & 0xF0) >> 4)] * 9 + adc_conv[((bid0 & 0xF0) >> 4)];
+    // #endif
 
-  // return board_id;
+    board_id = 4;
 
-  return 0;
+    return board_id;
 }
 
 unsigned char read_osbdm_id (void) // also places result in osbdm_id
 {
-  // char hold_current_value = 0;
+    // char hold_current_value = 0;
 
-  // osbdm_id = 0;
-  // #if defined __CFV2__
-  // // CFV234 do not support the version mechanism
-  // #else
-  // hold_current_value = PTCPE;
+    // osbdm_id = 0;
+    // #if defined __CFV2__
+    // // CFV234 do not support the version mechanism
+    // #else
+    // hold_current_value = PTCPE;
 
-  // PTCPE |= 0x07;
-  // wait_ms(2);
+    // PTCPE |= 0x07;
+    // wait_ms(2);
 
-  // if ((PTCD & 0x07) == 0x07)
-  // {
-  //   /* nothing is connected to the OSBDM_ID pins */
-  //   osbdm_id = 0;
-  // }
-  // else
-  // {
-  //   osbdm_id = PTCD & 0x07;
-  // }
+    // if ((PTCD & 0x07) == 0x07)
+    // {
+    //   /* nothing is connected to the OSBDM_ID pins */
+    //   osbdm_id = 0;
+    // }
+    // else
+    // {
+    //   osbdm_id = PTCD & 0x07;
+    // }
 
-  // /* restore pull-up value */
-  // PTCPE = hold_current_value;
-  // wait_ms(2);
+    // /* restore pull-up value */
+    // PTCPE = hold_current_value;
+    // wait_ms(2);
 
 
-  // #endif
-  //   return osbdm_id;
+    // #endif
+    osbdm_id = 1;
 
-  return 0;
+    return osbdm_id;
 }

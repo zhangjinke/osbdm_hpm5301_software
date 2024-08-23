@@ -101,14 +101,14 @@ static osbdm_error jtag_startup (void)
     // PTEDD = 0xED; // set direction
 
 
-    // TMS_RESET(); // set TMS low
-    // TRST_RESET();
-    // TCLK_RESET();
+    TMS_RESET(); // set TMS low
+    TRST_RESET();
+    TCLK_RESET();
 
     // PTBDD |= 0x0C; // TMS, TCLK signals output
     // PTBD  &= 0xF3;
 
-    // return osbdm_error_ok;
+    return osbdm_error_ok;
 }
 
 /******************************************************************************
@@ -258,7 +258,8 @@ void t_debug_init ()
     // PTBPE_PTBPE4 = 1; // Pull up Board ID pins
     // wait_ms(10);      // 10ms
     // osbdm_jtag_boardid = (PTBD_PTBD2) | (PTBD_PTBD4 << 1);
-    // jtag_startup();
+    osbdm_jtag_boardid = 0;
+    jtag_startup();
 }
 
 void t_serial_init ()
@@ -369,51 +370,41 @@ void t_set_clock (UINT32 clock)
 
 void xchng16 (unsigned char bitcount, UINT16 tdival, UINT16 tmsval, PUINT16 tdoval)
 {
-    // char b;
+    char b;
 
-    // PTED = (PTED & (output_buffer_enable_mask ^ 0xff)) | output_buffer_enable_value;
+    *tdoval = 0;
 
-    // *tdoval = 0;
+    // bang each bit out and receive a bit back each time
+    for (b = 0; b < bitcount; b++) {
+        if (tmsval & 0x0001 == 0x0001) {
+            TMS_SET(); // bring TMS high
+        } else {
+            TMS_RESET();
+        }
+        if (tdival & 0x0001 == 0x0001) {
+            TDI_OUT_SET(); // bring TMS high
+                           //				  TDI_OUT_SET();	        // bring TMS high
+                           //				  TDI_OUT_SET();	        // bring TMS high
+        } else {
+            TDI_OUT_RESET();
+            // TDI_OUT_RESET();
+            // TDI_OUT_RESET();
+        }
 
-    // // bang each bit out and receive a bit back each time
-    // for (b = 0; b < bitcount; b++)
-    // {
-    //   if (tmsval & 0x0001 == 0x0001)
-    //   {
-    //     TMS_SET(); // bring TMS high
-    //   }
-    //   else
-    //   {
-    //     TMS_RESET();
-    //   }
-    //   if (tdival & 0x0001 == 0x0001)
-    //   {
-    //     TDI_OUT_SET(); // bring TMS high
-    //                    //				  TDI_OUT_SET();	        // bring TMS high
-    //                    //				  TDI_OUT_SET();	        // bring TMS high
-    //   }
-    //   else
-    //   {
-    //     TDI_OUT_RESET();
-    //     // TDI_OUT_RESET();
-    //     // TDI_OUT_RESET();
-    //   }
+        TCLK_SET(); // TCLK High
 
-    // TCLK_SET(); // TCLK High
+        tdival  >>= 1; // shift to next output bit
+        tmsval  >>= 1; // shift to next output bit
+        *tdoval >>= 1;
 
-    // tdival  >>= 1; // shift to next output bit
-    // tmsval  >>= 1; // shift to next output bit
-    // *tdoval >>= 1;
+        // return TDO status
+        if (TDO_IN_SET) {
+            *tdoval = *tdoval | 0x8000;
+        }
+        TCLK_RESET(); // TCLK Low
+    }
 
-    // // return TDO status
-    // if (TDO_IN_SET)
-    // {
-    //   *tdoval = *tdoval | 0x8000;
-    // }
-    // TCLK_RESET(); // TCLK Low
-    // }
-    // if (TARGET_TYPE != ePPC)
-    // PTED = (PTED & (output_buffer_enable_mask ^ 0xff)) | (output_buffer_enable_value ^ output_buffer_enable_mask);
+    *tdoval = ByteSwap16(*tdoval);
 }
 
 
@@ -429,22 +420,22 @@ int t_special_feature (unsigned char sub_cmd_num,   // Special feature number (s
 
     switch (sub_cmd_num) {
     case 0xAA: // Test Case
-        for (i = 1; i <= *pInputLength; i++)
+        for (i = 1; i <= ByteSwap16(*pInputLength); i++)
             pOutputBuffer[i - 1] = pInputBuffer[i - 1] ^ 0xff;
         *pOutputLength = *pInputLength;
         return (0); // success
         break;
     case 0xA0: // Write Block in Cable - Untested
         temp_pointer = (char *)((((unsigned int)pInputBuffer[0]) << 8) + pInputBuffer[1]);
-        for (i = 1; i <= *pInputLength - 2; i++)
+        for (i = 1; i <= ByteSwap16(*pInputLength) - 2; i++)
             *temp_pointer++ = pInputBuffer[i + 1];
         return (0); // success
         break;
     case 0xA1: // Read Block in Cable - Untested
         temp_pointer = (char *)((((unsigned int)pInputBuffer[0]) << 8) + pInputBuffer[1]);
-        for (i = 1; i <= *pInputLength - 2; i++)
+        for (i = 1; i <= ByteSwap16(*pInputLength) - 2; i++)
             pOutputBuffer[i - 1] = *temp_pointer++;
-        *pOutputLength = *pInputLength - 2;
+        *pOutputLength = ByteSwap16(ByteSwap16(*pInputLength) - 2);
         return (0); // success
         break;
     case 0x00: // Get value of the TDO line
@@ -454,7 +445,7 @@ int t_special_feature (unsigned char sub_cmd_num,   // Special feature number (s
         else
             pOutputBuffer[0] = 0x00;
         pOutputBuffer[1] = pOutputBuffer[0];
-        *pOutputLength   = 2;
+        *pOutputLength   = ByteSwap16(2);
         return (0); // success
         break;
     case 0x01: // Set values directly on JTAG Port (1)
@@ -497,15 +488,15 @@ int t_special_feature (unsigned char sub_cmd_num,   // Special feature number (s
                // 5 Bytes define one 1-16 bit exchange (non compressed)
                // 3 OR 1 Bytes define on compressed 1-16 bit exchange
 
-        num_swaps     = *((PUINT16)pInputBuffer);
+        num_swaps     = ByteSwap16(*((PUINT16)pInputBuffer));
         pInputBuffer += 2;
         for (i = 0; i < num_swaps; i++) {
             tempnum = *((PUINT8)(pInputBuffer));
             if (tempnum < 17) {
                 xchng16(tempnum,
-                        *((PUINT16)(pInputBuffer + 1)),    // tdi
-                        *((PUINT16)(pInputBuffer + 3)),    // tms
-                        (PUINT16)(pOutputBuffer + i * 2)); // tdo
+                        ByteSwap16(*((PUINT16)(pInputBuffer + 1))), // tdi
+                        ByteSwap16(*((PUINT16)(pInputBuffer + 3))), // tms
+                        (PUINT16)(pOutputBuffer + i * 2));          // tdo
                 pInputBuffer += 5;
             } else {
                 if (tempnum < tms_only_transaction_compression_start) {
@@ -519,14 +510,14 @@ int t_special_feature (unsigned char sub_cmd_num,   // Special feature number (s
                     xchng16(
                         tms_only_transaction_compression_array_bitsval[tempnum -
                                                                        tms_only_transaction_compression_start],
-                        *((PUINT16)(pInputBuffer + 1)), // tdi
+                        ByteSwap16(*((PUINT16)(pInputBuffer + 1))), // tdi
                         tms_only_transaction_compression_array_tmsval[tempnum - tms_only_transaction_compression_start],
                         (PUINT16)(pOutputBuffer + i * 2)); // tdo
                     pInputBuffer += 3;
                 }
             }
         }
-        *pOutputLength = num_swaps * 2;
+        *pOutputLength = ByteSwap16(num_swaps * 2);
         return (0); // success
         break;
 
@@ -541,8 +532,10 @@ int t_special_feature (unsigned char sub_cmd_num,   // Special feature number (s
 
         index_num = *((PUINT8)pInputBuffer); // index into array 0 or 8
         for (i = 0; i < 8; i++) {
-            tms_tdi_transaction_compression_array_tdival[i + index_num] = *((PUINT16)(pInputBuffer + 1 + i * 5)); // tdi
-            tms_tdi_transaction_compression_array_tmsval[i + index_num] = *((PUINT16)(pInputBuffer + 3 + i * 5)); // tms
+            tms_tdi_transaction_compression_array_tdival[i + index_num] =
+                ByteSwap16(*((PUINT16)(pInputBuffer + 1 + i * 5))); // tdi
+            tms_tdi_transaction_compression_array_tmsval[i + index_num] =
+                ByteSwap16(*((PUINT16)(pInputBuffer + 3 + i * 5))); // tms
             tms_tdi_transaction_compression_array_bitsval[i + index_num] =
                 *((PUINT8)(pInputBuffer + 5 + i * 5)); // bits
         }
@@ -560,7 +553,7 @@ int t_special_feature (unsigned char sub_cmd_num,   // Special feature number (s
         index_num = *((PUINT8)pInputBuffer); // index into array 0 or 8
         for (i = 0; i < 8; i++) {
             tms_only_transaction_compression_array_tmsval[i + index_num] =
-                *((PUINT16)(pInputBuffer + 1 + i * 3)); // tms
+                ByteSwap16(*((PUINT16)(pInputBuffer + 1 + i * 3))); // tms
             tms_only_transaction_compression_array_bitsval[i + index_num] =
                 *((PUINT8)(pInputBuffer + 3 + i * 3)); // bits
         }
