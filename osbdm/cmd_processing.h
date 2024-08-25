@@ -39,14 +39,14 @@
 #ifndef _CMD_PROCESSING_H_
 #define _CMD_PROCESSING_H_
 
-#include "typedef.h"
+#include <stdint.h>
 
 // Global Variables
-extern word mod;               // SPI modulus count
-extern byte sStatus;           // SPI transmit status
-extern byte eStatus;           // BDMERROR_ status.  0 if no error
-extern byte debug_cmd_pending; // input BDM command pending
-// extern byte serial_cmd_pending;			// input serial command pending
+extern uint16_t         mod;               // SPI modulus count
+extern uint8_t          sStatus;           // SPI transmit status
+extern uint8_t          eStatus;           // BDMERROR_ status.  0 if no error
+extern volatile uint8_t debug_cmd_pending; // input BDM command pending
+// extern uint8_t serial_cmd_pending;			// input serial command pending
 
 
 /*
@@ -62,10 +62,9 @@ typedef enum {
 }reset_e;
 */
 
-typedef struct
-{
-  byte target_type : 3; // connected target type
-  byte reset       : 1; // reset
+typedef struct {
+    uint8_t target_type : 3; // connected target type
+    uint8_t reset       : 1; // reset
 } _tCable_Status;
 
 

@@ -34,13 +34,11 @@
 
 #include "cmd_processing.h" // command processing structures
 
-#include "USB_User_API.h" // USB EP configurations
-#include "commands.h"     // BDM commands header file
-#include "derivative.h"   // include peripheral declarations
-#include "serial_io.h"
-#include "target.h"
+#include "commands.h" // BDM commands header file
+#include "jtag_eppc.h"
+#include "jtag_io.h"
 #include "targetAPI.h" // target API include file
-#include "typedef.h"   // FSL data types
+#include "usb_osbdm.h"
 #include "util.h"
 
 
@@ -50,19 +48,17 @@ void command_exec (void); // executes BDM commands
 // Data Types
 _tCable_Status tCable_Status; // BDM cable status
 
-word spi_data;
-word rdata = 0;
+uint16_t spi_data;
+uint16_t rdata = 0;
 
 // Global variables parsed from the USB buffer stream
-unsigned char uCmd;   // command
-unsigned char uType;  // type
-unsigned long uAddr;  // address
-unsigned char uWidth; // width (access size)
-unsigned long uLen;   // length in bytes
+uint8_t  uCmd;   // command
+uint8_t  uType;  // type
+uint32_t uAddr;  // address
+uint8_t  uWidth; // width (access size)
+uint32_t uLen;   // length in bytes
 
-byte debug_cmd_pending; // input BDM command pending
-// byte serial_cmd_pending;	  // input Serial command pending
-
+volatile uint8_t debug_cmd_pending; // input BDM command pending
 
 /*------------------------------------------------------------------------------------
   get_mem_header
@@ -70,7 +66,7 @@ byte debug_cmd_pending; // input BDM command pending
   parse the usb header for memory commands into global variables
 
 */
-void get_mem_header (unsigned char *buf)
+void get_mem_header (uint8_t *buf)
 {
     uType = *(buf + 1); // uType = 8-bit Memory Type
 #ifdef __DSC__
@@ -82,13 +78,13 @@ void get_mem_header (unsigned char *buf)
     uLen   = getbuf4(buf + 7); // uLen = 32-bit length (number to read or write)
 }
 
-// note:  EP2_Buffer[1] should be preloaded with the number of data bytes to send back
+// note:  g_usb_osbdm_tx_buf[1] should be preloaded with the number of data bytes to send back
 //		  before calling this function
-void debug_command_send_return (unsigned char rval, unsigned char count)
+void debug_command_send_return (uint8_t rval, uint8_t count)
 {
-    EP2_Buffer[0] = rval;
-    EP2_Buffer[1] = count;
-    EndPoint_IN(EP2, count);
+    g_usb_osbdm_tx_buf[0] = rval;
+    g_usb_osbdm_tx_buf[1] = count;
+    usb_osbdm_ep_in_send(&g_usb_osbdm_tx_buf[0], count);
 }
 
 /*------------------------------------------------------------------------------------
@@ -98,24 +94,24 @@ void debug_command_send_return (unsigned char rval, unsigned char count)
 */
 void debug_command_exec ()
 {
-    byte   count, rcount;
-    char  *dptr;
-    UINT32 rval32;
+    uint8_t  count, rcount;
+    uint8_t *dptr;
+    uint32_t rval32;
 
-    uCmd   = EP1_Buffer[0]; // store command, this will be returned to host if successful
-    rcount = 2;             // default number of bytes to return
+    uCmd   = g_usb_osbdm_rx_buf[0]; // store command, this will be returned to host if successful
+    rcount = 2;                     // default number of bytes to return
 
     switch (uCmd) {
         // -- System Commands --------------------------------------------
 
     case CMD_GET_STATUS:
-        if (t_stat(EP2_Buffer + 2))
+        if (t_stat(g_usb_osbdm_tx_buf + 2))
             uCmd = CMD_FAILED;      // get status bytes
         rcount = STATUS_BLOCK_SIZE; // number of bytes to return (including header bytes)
         break;
 
     case CMD_GET_VER:
-        if (t_get_ver(EP2_Buffer + 2))
+        if (t_get_ver(g_usb_osbdm_tx_buf + 2))
             uCmd = CMD_FAILED;       // get firmware version info bytes
         rcount = VERSION_BLOCK_SIZE; // number of bytes to return (including header bytes)
         break;
@@ -126,15 +122,15 @@ void debug_command_exec ()
             uCmd = CMD_FAILED; // Initialize BDM
         break;
 
-    case CMD_RESET_TARGET:            // command 0x1B
-        t_reset(EP1_Buffer[1]);       // issue target reset - drives RSTO high for 50ms
-        EP2_Buffer[1]       = CMD_OK; // return status good
-        tCable_Status.reset = 0x01;   // reset occurred
-                                      //			Ep_In_Size = 0x02;			// return byte count
+    case CMD_RESET_TARGET:              // command 0x1B
+        t_reset(g_usb_osbdm_rx_buf[1]); // issue target reset - drives RSTO high for 50ms
+        g_usb_osbdm_tx_buf[1] = CMD_OK; // return status good
+        tCable_Status.reset   = 0x01;   // reset occurred
+                                        //			Ep_In_Size = 0x02;			// return byte count
         break;
 
     case CMD_ASSERT_TA:
-        t_assert_ta(getbuf2little(EP1_Buffer + 1));
+        t_assert_ta(getbuf2little(g_usb_osbdm_rx_buf + 1));
         break;
 
     case CMD_GO:
@@ -152,26 +148,26 @@ void debug_command_exec ()
     case CMD_CONFIG:
 
         // configparam_type, config_param, value
-        t_config(EP1_Buffer[1], EP1_Buffer[2], getbuf4(EP1_Buffer + 3));
+        t_config(g_usb_osbdm_rx_buf[1], g_usb_osbdm_rx_buf[2], getbuf4(g_usb_osbdm_rx_buf + 3));
         break;
 
     case CMD_SET_SPEED:
         // Set the BDM clock value of the target
-        t_set_clock(getbuf4(EP1_Buffer + 1));
+        t_set_clock(getbuf4(g_usb_osbdm_rx_buf + 1));
         break;
 
     case CMD_GET_SPEED:
-        rval32                      = t_get_clock(); // get target clock speed
-        *(UINT32 *)(EP2_Buffer + 2) = rval32;
-        rcount                      = 6;
+        rval32                                = t_get_clock(); // get target clock speed
+        *(uint32_t *)(g_usb_osbdm_tx_buf + 2) = rval32;
+        rcount                                = 6;
         break;
 
     case CMD_SPECIAL_FEATURE:
-        t_special_feature(EP1_Buffer[1],             // Special feature number (sub_cmd_num)
-                          (PUINT16)(EP1_Buffer + 2), // Length of Input Command
-                          EP1_Buffer + 4,            // Input Command Buffer
-                          (PUINT16)(EP2_Buffer + 2), // Length of Output Response
-                          EP2_Buffer + 4);           // Output Response Buffer
+        t_special_feature(g_usb_osbdm_rx_buf[1],                // Special feature number (sub_cmd_num)
+                          (uint16_t *)(g_usb_osbdm_rx_buf + 2), // Length of Input Command
+                          g_usb_osbdm_rx_buf + 4,               // Input Command Buffer
+                          (uint16_t *)(g_usb_osbdm_tx_buf + 2), // Length of Output Response
+                          g_usb_osbdm_tx_buf + 4);              // Output Response Buffer
         rcount = 64;
         break;
 
@@ -179,14 +175,14 @@ void debug_command_exec ()
     // -- Write Memory Commands --------------------------------------
     case CMD_WRITE_MEM:
 
-        get_mem_header(EP1_Buffer); // parse memory header into variables
-        dptr = EP1_Buffer + MEM_HEADER_SIZE;
+        get_mem_header(g_usb_osbdm_rx_buf); // parse memory header into variables
+        dptr = g_usb_osbdm_rx_buf + MEM_HEADER_SIZE;
 
         // determine number of bytes to write this time
         // no more than MAX_DATA_SIZE bytes can be sent at a time
         count = (MAX_DATA_SIZE - MEM_HEADER_SIZE); // default: maximum data size for first packet
         if (uLen < count)
-            count = (byte)uLen; // set to total if less than max packet size
+            count = (uint8_t)uLen; // set to total if less than max packet size
 
         switch (uType) {
         case MEM_RAM:
@@ -236,8 +232,8 @@ void debug_command_exec ()
         break;
 
     case CMD_WRITE_NEXT:
-        count = EP1_Buffer[1]; // get byte count for THIS BLOCK
-        if (t_write_mem(uType, uAddr, uWidth, count, EP1_Buffer + 2))
+        count = g_usb_osbdm_rx_buf[1]; // get byte count for THIS BLOCK
+        if (t_write_mem(uType, uAddr, uWidth, count, g_usb_osbdm_rx_buf + 2))
             uCmd = CMD_FAILED;
         else if (uType == MEM_P || uType == MEM_P_FLASH || ((uType == MEM_X || uType == MEM_X_FLASH) && uWidth > 8))
             uAddr += count / 2; // update uAddr to point to the address following this block
@@ -247,10 +243,10 @@ void debug_command_exec ()
 
     case CMD_FILL:
 
-        get_mem_header(EP1_Buffer); // parse memory header into variables
+        get_mem_header(g_usb_osbdm_rx_buf); // parse memory header into variables
 
         // issue fill command using these variables
-        if (t_fill_mem(uType, uAddr, uWidth, (int)uLen, EP1_Buffer + MEM_HEADER_SIZE))
+        if (t_fill_mem(uType, uAddr, uWidth, (uint32_t)uLen, g_usb_osbdm_rx_buf + MEM_HEADER_SIZE))
             uCmd = CMD_FAILED;
         break;
 
@@ -268,26 +264,26 @@ void debug_command_exec ()
 
     case CMD_FLASH_PROG:
         // execute the flash programming algorythem in target RAM
-        if (t_flash_prog(EP1_Buffer + 1))
+        if (t_flash_prog(g_usb_osbdm_rx_buf + 1))
             uCmd = CMD_FAILED;
         break;
 
     // -- Read Memory Commands --------------------------------------
     case CMD_READ_MEM:
 
-        get_mem_header(EP1_Buffer); // parse memory header into variables
-        dptr = EP2_Buffer + 2;
+        get_mem_header(g_usb_osbdm_rx_buf); // parse memory header into variables
+        dptr = g_usb_osbdm_tx_buf + 2;
 
         dptr[0] = 0; // Preclear the return buffer for 8/16bit reads
         dptr[1] = 0;
         dptr[2] = 0;
         dptr[3] = 0;
 
-        count = (byte)uLen; // determine number of bytes to read
+        count = (uint8_t)uLen; // determine number of bytes to read
 
         switch (uType) {
         case MEM_RAM:
-            // read memory into EP2_Buffer[2]...
+            // read memory into g_usb_osbdm_tx_buf[2]...
             if (t_read_mem(uType, uAddr, uWidth, count, dptr)) {
                 uCmd = CMD_FAILED;
                 break;
@@ -298,7 +294,7 @@ void debug_command_exec ()
 
         case MEM_P:
         case MEM_P_FLASH:
-            // read memory into EP2_Buffer[2]...
+            // read memory into g_usb_osbdm_tx_buf[2]...
             if (t_read_mem(uType, uAddr, uWidth, count, dptr)) {
                 uCmd = CMD_FAILED;
                 break;
@@ -309,7 +305,7 @@ void debug_command_exec ()
 
         case MEM_X:
         case MEM_X_FLASH:
-            // read memory into EP2_Buffer[2]...
+            // read memory into g_usb_osbdm_tx_buf[2]...
             if (t_read_mem(uType, uAddr, uWidth, count, dptr)) {
                 uCmd = CMD_FAILED;
                 break;
@@ -344,10 +340,10 @@ void debug_command_exec ()
         break;
 
     case CMD_READ_NEXT:
-        count = EP1_Buffer[1];
+        count = g_usb_osbdm_rx_buf[1];
 
-        // read memory into EP2_Buffer[2]...
-        if (t_read_mem(uType, uAddr, uWidth, count, EP2_Buffer + 2)) {
+        // read memory into g_usb_osbdm_tx_buf[2]...
+        if (t_read_mem(uType, uAddr, uWidth, count, g_usb_osbdm_tx_buf + 2)) {
             uCmd = CMD_FAILED;
             break;
         }
@@ -370,7 +366,7 @@ void debug_command_exec ()
 
     case CMD_JTAG_UNSECURE:
         //			if(t_unsecure())		uCmd = CMD_FAILED;	// unsecure and erase flash
-        if (t_unsecure(EP1_Buffer[1], EP1_Buffer[2], EP1_Buffer[3]))
+        if (t_unsecure(g_usb_osbdm_rx_buf[1], g_usb_osbdm_rx_buf[2], g_usb_osbdm_rx_buf[3]))
             uCmd = CMD_FAILED; // unsecure and erase flash
         break;
 
@@ -392,7 +388,7 @@ void debug_command_exec ()
 /*
 void serial_command_exec(){
 
-  byte command_num;
+  uint8_t command_num;
 
   command_num =  EP3_Buffer[1];	// store command, this will be returned to host if successful
 
@@ -423,7 +419,7 @@ void serial_send_data_if_pending(void){
      (SCI_CharReady()==TRUE)           // Serial Data Available
      ) {
 
-       int numbytes = 0;
+       uint32_t numbytes = 0;
        do {
            EP4_Buffer[2+numbytes] = SCI_GetChar();
            numbytes++;

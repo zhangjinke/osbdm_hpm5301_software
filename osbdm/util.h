@@ -20,17 +20,19 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_
 
-unsigned int ByteSwap16(unsigned int val);
+#include <stdint.h>
 
-unsigned long getbuf4 (unsigned char *buf);
-unsigned int  getbuf2big (unsigned char *buf);
-unsigned int  getbuf2little (unsigned char *buf);
+uint16_t ByteSwap16 (uint16_t val);
 
-unsigned long bigendian4_to_ulong (unsigned char *uc);
-unsigned long bigendian2_to_ulong (unsigned char *uc);
-void          ulong_to_bigendian4 (unsigned long ul, unsigned char *uc);
-void          ulong_to_bigendian2 (unsigned long ul, unsigned char *uc);
-void          ulong_to_littleendian4 (unsigned long ul, unsigned char *uc);
-void          ulong_to_littleendian2 (unsigned long ul, unsigned char *uc);
+uint32_t getbuf4 (uint8_t *buf);
+uint16_t  getbuf2big (uint8_t *buf);
+uint16_t  getbuf2little (uint8_t *buf);
+
+uint32_t bigendian4_to_ulong (uint8_t *uc);
+uint32_t bigendian2_to_ulong (uint8_t *uc);
+void          ulong_to_bigendian4 (uint32_t ul, uint8_t *uc);
+void          ulong_to_bigendian2 (uint32_t ul, uint8_t *uc);
+void          ulong_to_littleendian4 (uint32_t ul, uint8_t *uc);
+void          ulong_to_littleendian2 (uint32_t ul, uint8_t *uc);
 
 #endif // _UTIL_H_

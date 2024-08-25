@@ -15,10 +15,8 @@
 #include "usb_osbdm.h"
 
 #include "board.h"
-#include "usbd_core.h"
 
 // OSBDM
-#include "USB_User_API.h"
 #include "cmd_processing.h"
 
 #include <string.h>
@@ -55,6 +53,12 @@ static void __osbdm_ep_out_cb (uint8_t busid, uint8_t ep, uint32_t nbytes);
 /*******************************************************************************
   本地全局变量定义
 *******************************************************************************/
+
+/** \brief OSBDM 接收缓冲区 */
+USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX uint8_t g_usb_osbdm_rx_buf[USB_BULK_EP_MPS_HS];
+
+/** \brief OSBDM 发送缓冲区 */
+USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX uint8_t g_usb_osbdm_tx_buf[USB_BULK_EP_MPS_HS];
 
 /** \brief 设备描述符 */
 static const uint8_t __g_device_descriptor[] = {
@@ -115,8 +119,8 @@ static const uint8_t __g_other_speed_config_descriptor_hs[] = {
                                   0x00,  /**< \brief bInterfaceSubClass */
                                   0x00,  /**< \brief bInterfaceProtocol */
                                   0x02), /**< \brief iInterface */
-    USB_ENDPOINT_DESCRIPTOR_INIT(__OSBDM_EP_ADDR_IN, USB_ENDPOINT_TYPE_BULK, USB_BULK_EP_MPS_FS, 0x00),
-    USB_ENDPOINT_DESCRIPTOR_INIT(__OSBDM_EP_ADDR_OUT, USB_ENDPOINT_TYPE_BULK, USB_BULK_EP_MPS_FS, 0x00),
+    USB_ENDPOINT_DESCRIPTOR_INIT(__OSBDM_EP_ADDR_IN, USB_ENDPOINT_TYPE_BULK, USB_BULK_EP_MPS_HS, 0x00),
+    USB_ENDPOINT_DESCRIPTOR_INIT(__OSBDM_EP_ADDR_OUT, USB_ENDPOINT_TYPE_BULK, USB_BULK_EP_MPS_HS, 0x00),
 };
 
 /** \brief 其它速度配置描述符 (全速) */
@@ -133,8 +137,8 @@ static const uint8_t __g_other_speed___g_config_descriptor_fs[] = {
                                   0x00,  /**< \brief bInterfaceSubClass */
                                   0x00,  /**< \brief bInterfaceProtocol */
                                   0x02), /**< \brief iInterface */
-    USB_ENDPOINT_DESCRIPTOR_INIT(__OSBDM_EP_ADDR_IN, USB_ENDPOINT_TYPE_BULK, USB_BULK_EP_MPS_HS, 0x00),
-    USB_ENDPOINT_DESCRIPTOR_INIT(__OSBDM_EP_ADDR_OUT, USB_ENDPOINT_TYPE_BULK, USB_BULK_EP_MPS_HS, 0x00),
+    USB_ENDPOINT_DESCRIPTOR_INIT(__OSBDM_EP_ADDR_IN, USB_ENDPOINT_TYPE_BULK, USB_BULK_EP_MPS_FS, 0x00),
+    USB_ENDPOINT_DESCRIPTOR_INIT(__OSBDM_EP_ADDR_OUT, USB_ENDPOINT_TYPE_BULK, USB_BULK_EP_MPS_FS, 0x00),
 };
 
 /** \brief 字符串描述符 */
@@ -162,12 +166,6 @@ static struct usbd_endpoint __g_osbdm_ep_in = {.ep_addr = __OSBDM_EP_ADDR_IN, .e
 
 /** \brief OSBDM 输出端点 */
 static struct usbd_endpoint __g_osbdm_ep_out = {.ep_addr = __OSBDM_EP_ADDR_OUT, .ep_cb = __osbdm_ep_out_cb};
-
-/** \brief OSBDM 接收缓冲区 */
-USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX uint8_t _g_osbdm_rx_buf[2048];
-
-/** \brief OSBDM 发送缓冲区 */
-USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX uint8_t _g_osbdm_tx_buf[2048];
 
 /*******************************************************************************
   本地函数定义
@@ -244,20 +242,28 @@ static void __osbdm_ep_in_cb (uint8_t busid, uint8_t ep, uint32_t nbytes)
     }
 }
 
+// debug
+#include "hpm_gpio_drv.h"
+
+/** \brief LED_GREEN 引脚定义 */
+#define LED_GREEN_GPIO_INDEX GPIO_OE_GPIOA
+#define LED_GREEN_GPIO_PIN   30
+
+/** \brief LED_RED 引脚定义 */
+#define LED_RED_GPIO_INDEX GPIO_OE_GPIOA
+#define LED_RED_GPIO_PIN   31
+
 /**
  * \brief OSBDM 输出端点回调函数
  */
 static void __osbdm_ep_out_cb (uint8_t busid, uint8_t ep, uint32_t nbytes)
 {
-    if (debug_cmd_pending != 0) {
-        printf("pending cmd %02x, rx cmd %02x\n", debug_cmd_pending, _g_osbdm_rx_buf[0]);
-    } else {
-        debug_cmd_pending = _g_osbdm_rx_buf[0];
-        memcpy(&EP1_Buffer[0], &_g_osbdm_rx_buf[0], nbytes);
-    }
+    gpio_write_pin(HPM_GPIO0, LED_GREEN_GPIO_INDEX, LED_GREEN_GPIO_PIN, 1);
+
+    debug_cmd_pending = g_usb_osbdm_rx_buf[0];
 
     /* 启动接收输出端点 */
-    usbd_ep_start_read(busid, ep, _g_osbdm_rx_buf, sizeof(_g_osbdm_rx_buf));
+    usbd_ep_start_read(busid, ep, g_usb_osbdm_rx_buf, sizeof(g_usb_osbdm_rx_buf));
 }
 
 /**
@@ -284,7 +290,7 @@ static void __usbd_event_handler (uint8_t busid, uint8_t event)
     case USBD_EVENT_CONFIGURED:
 
         /* 启动接收输出端点 */
-        usbd_ep_start_read(busid, __OSBDM_EP_ADDR_OUT, _g_osbdm_rx_buf, sizeof(_g_osbdm_rx_buf));
+        usbd_ep_start_read(busid, __OSBDM_EP_ADDR_OUT, g_usb_osbdm_rx_buf, sizeof(g_usb_osbdm_rx_buf));
         break;
 
     case USBD_EVENT_SET_REMOTE_WAKEUP:
@@ -307,9 +313,13 @@ static void __usbd_event_handler (uint8_t busid, uint8_t event)
  */
 int32_t usb_osbdm_ep_in_send (uint8_t *p_data, uint32_t length)
 {
-    memcpy(&_g_osbdm_tx_buf[0], &p_data[0], length);
+    int32_t err;
 
-    return usbd_ep_start_write(__BUSID, __OSBDM_EP_ADDR_IN, _g_osbdm_tx_buf, length);
+    err = usbd_ep_start_write(__BUSID, __OSBDM_EP_ADDR_IN, p_data, length);
+
+    gpio_write_pin(HPM_GPIO0, LED_GREEN_GPIO_INDEX, LED_GREEN_GPIO_PIN, 0);
+
+    return err;
 }
 
 /**

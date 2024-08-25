@@ -12,11 +12,11 @@
   头文件包含
 *******************************************************************************/
 
-#include "USB_User_API.h"
 #include "board.h"
 #include "board_id.h"
 #include "cmd_processing.h"
 #include "hpm_gpio_drv.h"
+#include "targetAPI.h"
 #include "usb_osbdm.h"
 
 #include <stdio.h>
@@ -69,6 +69,8 @@
   本地函数声明
 *******************************************************************************/
 
+void t_debug_init (void);
+
 /*******************************************************************************
   本地全局变量定义
 *******************************************************************************/
@@ -80,6 +82,14 @@
 /*******************************************************************************
   外部函数定义
 *******************************************************************************/
+
+// debug
+uint32_t systick_us_get (void)
+{
+    return (uint32_t)hpm_csr_get_core_cycle() / 360;
+}
+
+#define LOGT(format, ...) printf("%010d> " format, systick_us_get(), ##__VA_ARGS__)
 
 int main (void)
 {
@@ -127,14 +137,12 @@ int main (void)
 
     while (1) {
         if (debug_cmd_pending) { // if BDM command is ready,
-            gpio_write_pin(HPM_GPIO0, LED_GREEN_GPIO_INDEX, LED_GREEN_GPIO_PIN, 1);
-            // printf("exec cmd %02x %02x\n", debug_cmd_pending, EP1_Buffer[1]);
+            // LOGT("exec cmd %02x %02x %02x\n", debug_cmd_pending, g_usb_osbdm_rx_buf[1], g_usb_osbdm_rx_buf[2]);
 
             debug_command_exec(); // process BDM command
-            // printf("done cmd %02x\n", debug_cmd_pending);
-            debug_cmd_pending = 0x00; // clear pending flag
 
-            gpio_write_pin(HPM_GPIO0, LED_GREEN_GPIO_INDEX, LED_GREEN_GPIO_PIN, 0);
+            // LOGT("done cmd %02x\n", debug_cmd_pending);
+            debug_cmd_pending = 0x00; // clear pending flag
         }
     }
 

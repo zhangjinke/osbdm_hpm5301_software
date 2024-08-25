@@ -32,12 +32,13 @@
 #ifndef _BOARD_ID_H_
 #define _BOARD_ID_H_
 
+#include <stdint.h>
 
-unsigned char read_board_id (void); // also places result in "board_id"
-unsigned char read_osbdm_id (void); // also places result in "osbdm_id"
+uint8_t read_board_id (void); // also places result in "board_id"
+uint8_t read_osbdm_id (void); // also places result in "osbdm_id"
 
-extern unsigned char board_id;
-extern unsigned char osbdm_id;
+extern uint8_t board_id;
+extern uint8_t osbdm_id;
 
 
 #endif // _BDM_CF_H_

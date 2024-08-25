@@ -57,93 +57,90 @@
 // Reset Type Definition
 //----------------------------------------------------------------------------
 
-typedef enum
-{ // type of reset mode
-  eSoftReset_to_DebugMode,
-  eSoftReset_to_NormalMode,
-  eHardReset_to_DebugMode,
-  eHardReset_to_NormalMode,
-  ePowerReset_to_DebugMode,
-  ePowerReset_to_NormalMode // not implemented yet
+typedef enum { // type of reset mode
+    eSoftReset_to_DebugMode,
+    eSoftReset_to_NormalMode,
+    eHardReset_to_DebugMode,
+    eHardReset_to_NormalMode,
+    ePowerReset_to_DebugMode,
+    ePowerReset_to_NormalMode // not implemented yet
 } ResetT;
 
 //----------------------------------------------------------------------------
 // Core Type Definition
 //----------------------------------------------------------------------------
 
-typedef enum
-{
-  eCFv234,
-  eCFv1,
-  eS08,
-  eRS08,
-  eS12,
-  eDSC,
-  eCoreTypeUnknown,
-  eKinetis,
-  ePPC,
-  eS12Z,
+typedef enum {
+    eCFv234,
+    eCFv1,
+    eS08,
+    eRS08,
+    eS12,
+    eDSC,
+    eCoreTypeUnknown,
+    eKinetis,
+    ePPC,
+    eS12Z,
 } CoreT;
 
 //----------------------------------------------------------------------------
 // Firmware Type Definition
 //----------------------------------------------------------------------------
 
-typedef enum
-{
-  eGeneric,
-  eEmbeddedGeneric
+typedef enum {
+    eGeneric,
+    eEmbeddedGeneric
 } FirmwareT;
 
 //----------------------------------------------------------------------------
 // target implementation module API functions
 //----------------------------------------------------------------------------
 
-byte t_init (void);         // init BDM_CF and target
-byte t_reset (ResetT mode); // resets target and leaves in selected mode;
-word t_sync (void);         // Returns the sync value in 24 MHz. clocks;
-byte t_resync (void);
-int  t_stat (PUINT8 pData); // Returns status
-byte t_halt (void);         // halt program execution at next command
-byte t_go (void);           // resume code execution from current PC
-byte t_step (void);
-int  t_get_ver (PUINT8 pData); // Returns OSBDM-JM60 version info
+uint8_t  t_init (void);         // init BDM_CF and target
+uint8_t  t_reset (ResetT mode); // resets target and leaves in selected mode;
+uint16_t t_sync (void);         // Returns the sync value in 24 MHz. clocks;
+uint8_t  t_resync (void);
+int32_t  t_stat (uint8_t *pData); // Returns status
+uint8_t  t_halt (void);           // halt program execution at next command
+uint8_t  t_go (void);             // resume code execution from current PC
+uint8_t  t_step (void);
+int32_t  t_get_ver (uint8_t *pData); // Returns OSBDM-JM60 version info
 
-int t_config (byte configType, byte configParam, UINT32 paramVal);
+int32_t t_config (uint8_t configType, uint8_t configParam, uint32_t paramVal);
 
-UINT32 t_get_clock (void);
-void   t_set_clock (UINT32 interval);
+uint32_t t_get_clock (void);
+void     t_set_clock (uint32_t interval);
 
-int t_write_mem (byte type, UINT32 addr, UINT8 width, int count, PUINT8 pData);
-int t_soft_reset_halt (byte type, UINT32 addr, UINT8 width, int count, PUINT8 pData);
-int t_read_mem (byte type, UINT32 addr, UINT8 width, int count, PUINT8 pData);
-int t_fill_mem (byte type, UINT32 addr, UINT8 width, int count, PUINT8 pData);
+int32_t t_write_mem (uint8_t type, uint32_t addr, uint8_t width, uint32_t count, uint8_t *pData);
+int32_t t_soft_reset_halt (uint8_t type, uint32_t addr, uint8_t width, uint32_t count, uint8_t *pData);
+int32_t t_read_mem (uint8_t type, uint32_t addr, uint8_t width, uint32_t count, uint8_t *pData);
+int32_t t_fill_mem (uint8_t type, uint32_t addr, uint8_t width, uint32_t count, uint8_t *pData);
 
-int t_write_ad (UINT32 addr, PUINT8 pData);
-int t_read_ad (UINT32 addr, PUINT8 pData);
+int32_t t_write_ad (uint32_t addr, uint8_t *pData);
+int32_t t_read_ad (uint32_t addr, uint8_t *pData);
 
-int t_write_creg (UINT32 addr, PUINT8 pData);
-int t_read_creg (UINT32 addr, PUINT8 pData);
+int32_t t_write_creg (uint32_t addr, uint8_t *pData);
+int32_t t_read_creg (uint32_t addr, uint8_t *pData);
 
-int t_write_dreg (UINT32 addr, UINT8 uWidth, PUINT8 pData);
-int t_read_dreg (UINT32 addr, UINT8 uWidth, PUINT8 pData);
+int32_t t_write_dreg (uint32_t addr, uint8_t uWidth, uint8_t *pData);
+int32_t t_read_dreg (uint32_t addr, uint8_t uWidth, uint8_t *pData);
 
-char t_unsecure (byte lockr, byte lrcnt, byte clkdiv);
-void t_assert_ta (word dly_cnt);
+uint8_t t_unsecure (uint8_t lockr, uint8_t lrcnt, uint8_t clkdiv);
+void    t_assert_ta (uint16_t dly_cnt);
 
-int t_flash_power (byte enable);
-int t_flash_enable (byte enable);
-int t_flash_prog (PUINT8 pData);
+int32_t t_flash_power (uint8_t enable);
+int32_t t_flash_enable (uint8_t enable);
+int32_t t_flash_prog (uint8_t *pData);
 
 void t_flash_stat (void);
 
-int t_enable_ack (byte enable); // 1 to enable, 0 to disable
+int32_t t_enable_ack (uint8_t enable); // 1 to enable, 0 to disable
 
-int t_special_feature (unsigned char sub_cmd_num,   // Special feature number (sub_cmd_num)
-                       PUINT16       pInputLength,  // Length of Input Command
-                       PUINT8        pInputBuffer,  // Input Command Buffer
-                       PUINT16       pOutputLength, // Length of Output Response
-                       PUINT8        pOutputBuffer);       // Output Response Buffer
+int32_t t_special_feature (uint8_t   sub_cmd_num,   // Special feature number (sub_cmd_num)
+                           uint16_t *pInputLength,  // Length of Input Command
+                           uint8_t  *pInputBuffer,  // Input Command Buffer
+                           uint16_t *pOutputLength, // Length of Output Response
+                           uint8_t  *pOutputBuffer); // Output Response Buffer
 
 #endif // _TARGETAPI_H_
 // --------------------------------- EOF -------------------------------------

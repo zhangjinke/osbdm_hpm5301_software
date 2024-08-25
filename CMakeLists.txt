@@ -17,7 +17,7 @@ set(CONFIG_SEGGER_RTT 1)
 find_package(hpm-sdk REQUIRED HINTS $ENV{HPM_SDK_BASE})
 project(osbdm)
 
-sdk_compile_options("-O0")
+sdk_compile_options("-O3")
 
 sdk_inc(application/include)
 
@@ -49,17 +49,11 @@ sdk_ses_opt_lib_io_type(RTT)
 sdk_ses_opt_debug_connection(J-Link)
 
 # OSBDM
-sdk_compile_definitions(-D__EPPC__)
 sdk_app_inc(osbdm)
 sdk_app_inc(osbdm/common)
 sdk_app_src(osbdm/board_id.c)
 sdk_app_src(osbdm/cmd_processing.c)
-sdk_app_src(osbdm/dummy_bdm_driver.c)
 sdk_app_src(osbdm/jtag_eppc.c)
-sdk_app_src(osbdm/jtag_jm60.c)
-sdk_app_src(osbdm/MCU.c)
-sdk_app_src(osbdm/USB_User_API.c)
 sdk_app_src(osbdm/util.c)
-sdk_app_src(osbdm/serial_io.c)
 
 # generate_ide_projects()
