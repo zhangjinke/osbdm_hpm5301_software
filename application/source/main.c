@@ -16,6 +16,8 @@
 #include "board_id.h"
 #include "cmd_processing.h"
 #include "hpm_gpio_drv.h"
+#include "hpm_gpiom_drv.h"
+#include "jtag_io.h"
 #include "targetAPI.h"
 #include "usb_osbdm.h"
 
@@ -25,29 +27,7 @@
   宏定义
 *******************************************************************************/
 
-/** \brief TMS 引脚定义 */
-#define TMS_GPIO_INDEX GPIO_OE_GPIOA
-#define TMS_GPIO_PIN   28
-
-/** \brief TCK 引脚定义 */
-#define TCK_GPIO_INDEX GPIO_OE_GPIOA
-#define TCK_GPIO_PIN   27
-
-/** \brief TDI 引脚定义 */
-#define TDI_GPIO_INDEX GPIO_OE_GPIOB
-#define TDI_GPIO_PIN   13
-
-/** \brief TDO 引脚定义 */
-#define TDO_GPIO_INDEX GPIO_OE_GPIOB
-#define TDO_GPIO_PIN   12
-
-/** \brief SRST 引脚定义 */
-#define SRST_GPIO_INDEX GPIO_OE_GPIOB
-#define SRST_GPIO_PIN   15
-
-/** \brief JCOMP 引脚定义 */
-#define JCOMP_GPIO_INDEX GPIO_OE_GPIOB
-#define JCOMP_GPIO_PIN   14
+#define LOGT(format, ...) printf("%010d> " format, (uint32_t)hpm_csr_get_core_cycle() / 360, ##__VA_ARGS__)
 
 /** \brief PWR 引脚定义 */
 #define PWR_GPIO_INDEX GPIO_OE_GPIOY
@@ -83,14 +63,6 @@ void t_debug_init (void);
   外部函数定义
 *******************************************************************************/
 
-// debug
-uint32_t systick_us_get (void)
-{
-    return (uint32_t)hpm_csr_get_core_cycle() / 360;
-}
-
-#define LOGT(format, ...) printf("%010d> " format, systick_us_get(), ##__VA_ARGS__)
-
 int main (void)
 {
     /* 板级初始化 */
@@ -110,26 +82,31 @@ int main (void)
     gpio_write_pin(HPM_GPIO0, LED_GREEN_GPIO_INDEX, LED_GREEN_GPIO_PIN, 0);
 
     /* 初始化 PWR 引脚 */
-    gpio_write_pin(HPM_GPIO0, PWR_GPIO_INDEX, PWR_GPIO_PIN, 0);
-    gpio_set_pin_output(HPM_GPIO0, PWR_GPIO_INDEX, PWR_GPIO_PIN);
+    HPM_PIOC->PAD[IOC_PAD_PY00].FUNC_CTL = PIOC_PY00_FUNC_CTL_PGPIO_Y_00;
+    gpio_write_pin(HPM_PGPIO, PWR_GPIO_INDEX, PWR_GPIO_PIN, 0);
+    gpio_set_pin_output(HPM_PGPIO, PWR_GPIO_INDEX, PWR_GPIO_PIN);
 
     /* 初始化 JTAG 引脚 */
-    gpio_write_pin(HPM_GPIO0, TMS_GPIO_INDEX, TMS_GPIO_PIN, 0);
-    gpio_set_pin_output(HPM_GPIO0, TMS_GPIO_INDEX, TMS_GPIO_PIN);
+    gpiom_set_pin_controller(HPM_GPIOM, TMS_GPIO_INDEX, TMS_GPIO_PIN, gpiom_core0_fast);
+    gpio_write_pin(HPM_FGPIO, TMS_GPIO_INDEX, TMS_GPIO_PIN, 0);
+    gpio_set_pin_output(HPM_FGPIO, TMS_GPIO_INDEX, TMS_GPIO_PIN);
 
-    gpio_write_pin(HPM_GPIO0, TCK_GPIO_INDEX, TCK_GPIO_PIN, 0);
-    gpio_set_pin_output(HPM_GPIO0, TCK_GPIO_INDEX, TCK_GPIO_PIN);
+    gpiom_set_pin_controller(HPM_GPIOM, TCK_GPIO_INDEX, TCK_GPIO_PIN, gpiom_core0_fast);
+    gpio_write_pin(HPM_FGPIO, TCK_GPIO_INDEX, TCK_GPIO_PIN, 0);
+    gpio_set_pin_output(HPM_FGPIO, TCK_GPIO_INDEX, TCK_GPIO_PIN);
 
-    gpio_write_pin(HPM_GPIO0, TDI_GPIO_INDEX, TDI_GPIO_PIN, 0);
-    gpio_set_pin_output(HPM_GPIO0, TDI_GPIO_INDEX, TDI_GPIO_PIN);
+    gpiom_set_pin_controller(HPM_GPIOM, TDI_GPIO_INDEX, TDI_GPIO_PIN, gpiom_core0_fast);
+    gpio_write_pin(HPM_FGPIO, TDI_GPIO_INDEX, TDI_GPIO_PIN, 0);
+    gpio_set_pin_output(HPM_FGPIO, TDI_GPIO_INDEX, TDI_GPIO_PIN);
 
-    gpio_set_pin_input(HPM_GPIO0, TDO_GPIO_INDEX, TDO_GPIO_PIN);
-
-    gpio_write_pin(HPM_GPIO0, SRST_GPIO_INDEX, SRST_GPIO_PIN, 0);
-    gpio_set_pin_output(HPM_GPIO0, SRST_GPIO_INDEX, SRST_GPIO_PIN);
+    gpiom_set_pin_controller(HPM_GPIOM, TDO_GPIO_INDEX, TDO_GPIO_PIN, gpiom_core0_fast);
+    gpio_set_pin_input(HPM_FGPIO, TDO_GPIO_INDEX, TDO_GPIO_PIN);
 
     gpio_write_pin(HPM_GPIO0, JCOMP_GPIO_INDEX, JCOMP_GPIO_PIN, 1);
     gpio_set_pin_output(HPM_GPIO0, JCOMP_GPIO_INDEX, JCOMP_GPIO_PIN);
+
+    gpio_write_pin(HPM_GPIO0, SRST_GPIO_INDEX, SRST_GPIO_PIN, 0);
+    gpio_set_pin_output(HPM_GPIO0, SRST_GPIO_INDEX, SRST_GPIO_PIN);
 
     read_board_id();
     read_osbdm_id();

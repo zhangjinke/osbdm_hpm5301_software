@@ -205,7 +205,7 @@ int32_t t_read_creg (uint32_t addr, uint8_t *data)
 /******************************************************************************
  *	t_reset(mode)
  *
- *	assert reset to target device.  tRSTO is inverted version of tRST to target
+ *	assert reset to target device.  SRST is inverted version of tRST to target
  *
  *	Input:	0 = reset to ONcE mode, 1 = reset to Normal Mode
  *	Return:	0 on success, 1 on fail
@@ -344,6 +344,37 @@ void t_set_clock (uint32_t clock)
 {
 }
 
+// 12 个 NOP() 实测 7.5MHz 左右（无法正常使用）
+// 16 个 NOP() 实测 6.4MHz 左右
+// 20 个 NOP() 实测 5.5MHz 左右
+// 24 个 NOP() 实测 4.5MHz 左右
+void delay (void)
+{
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    NOP();
+    // NOP();
+    // NOP();
+    // NOP();
+    // NOP();
+}
 
 void xchng16 (uint8_t bitcount, uint16_t tdival, uint16_t tmsval, uint16_t *tdoval)
 {
@@ -354,24 +385,23 @@ void xchng16 (uint8_t bitcount, uint16_t tdival, uint16_t tmsval, uint16_t *tdov
     // bang each bit out and receive a bit back each time
     for (b = 0; b < bitcount; b++) {
         if ((tmsval & 0x0001) == 0x0001) {
-            TMS_SET(); // bring TMS high
+            TMS_SET();
         } else {
             TMS_RESET();
         }
         if ((tdival & 0x0001) == 0x0001) {
-            TDI_OUT_SET(); // bring TMS high
-                           //				  TDI_OUT_SET();	        // bring TMS high
-                           //				  TDI_OUT_SET();	        // bring TMS high
+            TDI_OUT_SET();
         } else {
             TDI_OUT_RESET();
-            // TDI_OUT_RESET();
-            // TDI_OUT_RESET();
         }
 
+        delay();
         TCLK_SET(); // TCLK High
+        delay();
 
-        tdival  >>= 1; // shift to next output bit
-        tmsval  >>= 1; // shift to next output bit
+        // shift to next output bit
+        tdival  >>= 1;
+        tmsval  >>= 1;
         *tdoval >>= 1;
 
         // return TDO status
@@ -447,10 +477,9 @@ int32_t t_special_feature (uint8_t   sub_cmd_num,   // Special feature number (s
             TCLK_RESET();
         } // Bit3  RESET
         if (pInputBuffer[0] & 0x08) {
-            // tRSTO_DIR = 0; // RSTO pin is an input
+            SRST_RESET();
         } else {
-            // tRSTO     = 1; // assert reset_out signal
-            // tRSTO_DIR = 1; // drive the signal out
+            SRST_SET();
         };
         return (0); // success
         break;
