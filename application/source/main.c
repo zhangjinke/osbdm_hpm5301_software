@@ -12,12 +12,11 @@
   头文件包含
 *******************************************************************************/
 
-#include "board.h"
+#include "board_custom.h"
 #include "board_id.h"
 #include "cmd_processing.h"
 #include "hpm_gpio_drv.h"
 #include "hpm_gpiom_drv.h"
-#include "jtag_io.h"
 #include "targetAPI.h"
 #include "usb_osbdm.h"
 
@@ -27,19 +26,7 @@
   宏定义
 *******************************************************************************/
 
-#define LOGT(format, ...) printf("%010d> " format, (uint32_t)hpm_csr_get_core_cycle() / 360, ##__VA_ARGS__)
-
-/** \brief PWR 引脚定义 */
-#define PWR_GPIO_INDEX GPIO_OE_GPIOY
-#define PWR_GPIO_PIN   0
-
-/** \brief LED_GREEN 引脚定义 */
-#define LED_GREEN_GPIO_INDEX GPIO_OE_GPIOA
-#define LED_GREEN_GPIO_PIN   30
-
-/** \brief LED_RED 引脚定义 */
-#define LED_RED_GPIO_INDEX GPIO_OE_GPIOA
-#define LED_RED_GPIO_PIN   31
+#define LOGT(format, ...) printf("%010d> " format, systick_get(), ##__VA_ARGS__)
 
 /*******************************************************************************
   本地全局变量声明
@@ -55,71 +42,118 @@ void t_debug_init (void);
   本地全局变量定义
 *******************************************************************************/
 
+/** \brief VREF 电压 */
+static uint32_t _g_vref_voltage = 0;
+
 /*******************************************************************************
   本地函数定义
 *******************************************************************************/
+
+/**
+ * \brief 处理 VIO 电压任务
+ */
+static void _vio_process (void)
+{
+    int32_t voltage;
+
+    voltage = vref_voltage_get();
+    if (voltage >= 0) {
+        _g_vref_voltage = voltage;
+        vio_pwm_duty_set(VIO_PWM_DUTY_GET(voltage));
+    }
+}
+
+/**
+ * \brief 处理 LED ERROR 任务
+ */
+static void _led_error_process (void)
+{
+    if (_g_vref_voltage < 1000) {
+        LED_RED_OFF();
+    } else {
+        if (SRST_OUT_GET() && (!SRST_IN_GET())) { /* 复位输出有效，但输入无效 */
+            LED_RED_ON();
+        } else {
+            LED_RED_OFF();
+        }
+    }
+}
+
+/**
+ * \brief 处理 LED STATUS 任务
+ */
+static void _led_status_process (void)
+{
+    static uint32_t s_tick  = 0;
+    static uint32_t s_state = 0;
+
+    switch (s_state) {
+    case 0: /* 空闲状态 */
+        if (debug_cmd_pending) {
+            s_tick = systick_get();
+            LED_GREEN_OFF(); /* 执行命令，熄灭 LED GREEN */
+            s_state = 1;
+            break;
+        }
+        break;
+
+    case 1: /* LED 点亮状态 */
+        if ((systick_get() - s_tick) >= 50) {
+            s_tick = systick_get();
+            LED_GREEN_ON();
+            s_state = 2;
+            break;
+        }
+        break;
+
+    case 2: /* LED 熄灭状态 */
+        if ((systick_get() - s_tick) >= 10) {
+            s_state = 0;
+            break;
+        }
+        break;
+    }
+}
 
 /*******************************************************************************
   外部函数定义
 *******************************************************************************/
 
+/**
+ * \brief 主函数
+ */
 int main (void)
 {
     /* 板级初始化 */
-    board_init();
+    board_custom_init();
 
     /* 初始化 USB */
     usb_osbdm_init();
 
-    /* 初始化 LED */
-    gpio_write_pin(HPM_GPIO0, LED_GREEN_GPIO_INDEX, LED_GREEN_GPIO_PIN, 1);
-    gpio_set_pin_output(HPM_GPIO0, LED_GREEN_GPIO_INDEX, LED_GREEN_GPIO_PIN);
-
-    gpio_write_pin(HPM_GPIO0, LED_RED_GPIO_INDEX, LED_RED_GPIO_PIN, 1);
-    gpio_set_pin_output(HPM_GPIO0, LED_RED_GPIO_INDEX, LED_RED_GPIO_PIN);
-
     /* 点亮 LED_GREEN */
-    gpio_write_pin(HPM_GPIO0, LED_GREEN_GPIO_INDEX, LED_GREEN_GPIO_PIN, 0);
+    LED_GREEN_ON();
 
-    /* 初始化 PWR 引脚 */
-    HPM_PIOC->PAD[IOC_PAD_PY00].FUNC_CTL = PIOC_PY00_FUNC_CTL_PGPIO_Y_00;
-    gpio_write_pin(HPM_PGPIO, PWR_GPIO_INDEX, PWR_GPIO_PIN, 0);
-    gpio_set_pin_output(HPM_PGPIO, PWR_GPIO_INDEX, PWR_GPIO_PIN);
-
-    /* 初始化 JTAG 引脚 */
-    gpiom_set_pin_controller(HPM_GPIOM, TMS_GPIO_INDEX, TMS_GPIO_PIN, gpiom_core0_fast);
-    gpio_write_pin(HPM_FGPIO, TMS_GPIO_INDEX, TMS_GPIO_PIN, 0);
-    gpio_set_pin_output(HPM_FGPIO, TMS_GPIO_INDEX, TMS_GPIO_PIN);
-
-    gpiom_set_pin_controller(HPM_GPIOM, TCK_GPIO_INDEX, TCK_GPIO_PIN, gpiom_core0_fast);
-    gpio_write_pin(HPM_FGPIO, TCK_GPIO_INDEX, TCK_GPIO_PIN, 0);
-    gpio_set_pin_output(HPM_FGPIO, TCK_GPIO_INDEX, TCK_GPIO_PIN);
-
-    gpiom_set_pin_controller(HPM_GPIOM, TDI_GPIO_INDEX, TDI_GPIO_PIN, gpiom_core0_fast);
-    gpio_write_pin(HPM_FGPIO, TDI_GPIO_INDEX, TDI_GPIO_PIN, 0);
-    gpio_set_pin_output(HPM_FGPIO, TDI_GPIO_INDEX, TDI_GPIO_PIN);
-
-    gpiom_set_pin_controller(HPM_GPIOM, TDO_GPIO_INDEX, TDO_GPIO_PIN, gpiom_core0_fast);
-    gpio_set_pin_input(HPM_FGPIO, TDO_GPIO_INDEX, TDO_GPIO_PIN);
-
-    gpio_write_pin(HPM_GPIO0, JCOMP_GPIO_INDEX, JCOMP_GPIO_PIN, 1);
-    gpio_set_pin_output(HPM_GPIO0, JCOMP_GPIO_INDEX, JCOMP_GPIO_PIN);
-
-    gpio_write_pin(HPM_GPIO0, SRST_GPIO_INDEX, SRST_GPIO_PIN, 0);
-    gpio_set_pin_output(HPM_GPIO0, SRST_GPIO_INDEX, SRST_GPIO_PIN);
-
+    /* 初始化 OSBDM */
     read_board_id();
     read_osbdm_id();
     t_debug_init();
 
     while (1) {
-        if (debug_cmd_pending) { // if BDM command is ready,
+        /* 处理 VIO 电压任务 */
+        _vio_process();
+
+        /* 处理 LED ERROR 任务 */
+        _led_error_process();
+
+        /* 处理 LED STATUS 任务 */
+        _led_status_process();
+
+        /* 处理 OSBDM 命令 */
+        if (debug_cmd_pending) {
             // LOGT("exec cmd %02x %02x %02x\n", debug_cmd_pending, g_usb_osbdm_rx_buf[1], g_usb_osbdm_rx_buf[2]);
-
-            debug_command_exec(); // process BDM command
-
+            debug_command_exec();
             // LOGT("done cmd %02x\n", debug_cmd_pending);
-            debug_cmd_pending = 0x00; // clear pending flag
+            debug_cmd_pending = 0x00;
         }
     }
 

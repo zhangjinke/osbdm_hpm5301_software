@@ -242,23 +242,12 @@ static void __osbdm_ep_in_cb (uint8_t busid, uint8_t ep, uint32_t nbytes)
     }
 }
 
-// debug
-#include "hpm_gpio_drv.h"
-
-/** \brief LED_GREEN 引脚定义 */
-#define LED_GREEN_GPIO_INDEX GPIO_OE_GPIOA
-#define LED_GREEN_GPIO_PIN   30
-
-/** \brief LED_RED 引脚定义 */
-#define LED_RED_GPIO_INDEX GPIO_OE_GPIOA
-#define LED_RED_GPIO_PIN   31
-
 /**
  * \brief OSBDM 输出端点回调函数
  */
 static void __osbdm_ep_out_cb (uint8_t busid, uint8_t ep, uint32_t nbytes)
 {
-    gpio_write_pin(HPM_GPIO0, LED_GREEN_GPIO_INDEX, LED_GREEN_GPIO_PIN, 1);
+    (void)nbytes;
 
     debug_cmd_pending = g_usb_osbdm_rx_buf[0];
 
@@ -317,8 +306,6 @@ int32_t usb_osbdm_ep_in_send (uint8_t *p_data, uint32_t length)
 
     err = usbd_ep_start_write(__BUSID, __OSBDM_EP_ADDR_IN, p_data, length);
 
-    gpio_write_pin(HPM_GPIO0, LED_GREEN_GPIO_INDEX, LED_GREEN_GPIO_PIN, 0);
-
     return err;
 }
 
@@ -327,9 +314,6 @@ int32_t usb_osbdm_ep_in_send (uint8_t *p_data, uint32_t length)
  */
 void usb_osbdm_init (void)
 {
-    intc_set_irq_priority(CONFIG_HPM_USBD_IRQn, 1);
-    board_init_usb_pins();
-
     usbd_desc_register(__BUSID, &__g_descriptor);
 
     usbd_add_interface(__BUSID, &__g_interface);

@@ -27,9 +27,9 @@
 
 #include "jtag_eppc.h"
 
-#include "board_id.h" // read the hardware ID if available
-#include "commands.h" // BDM commands header file
-#include "jtag_io.h"
+#include "board_custom.h"
+#include "board_id.h"  // read the hardware ID if available
+#include "commands.h"  // BDM commands header file
 #include "targetAPI.h" // target API include file
 #include "util.h"
 
@@ -89,8 +89,8 @@ static uint8_t  tms_tdi_transaction_compression_array_bitsval[tms_tdi_transactio
 static osbdm_error jtag_startup (void)
 {
     TMS_RESET();
-    TRST_RESET();
-    TCLK_RESET();
+    TRST_ASSERT();
+    TCK_RESET();
 
     return osbdm_error_ok;
 }
@@ -390,13 +390,13 @@ void xchng16 (uint8_t bitcount, uint16_t tdival, uint16_t tmsval, uint16_t *tdov
             TMS_RESET();
         }
         if ((tdival & 0x0001) == 0x0001) {
-            TDI_OUT_SET();
+            TDI_SET();
         } else {
-            TDI_OUT_RESET();
+            TDI_RESET();
         }
 
         delay();
-        TCLK_SET(); // TCLK High
+        TCK_SET(); // TCLK High
         delay();
 
         // shift to next output bit
@@ -405,10 +405,10 @@ void xchng16 (uint8_t bitcount, uint16_t tdival, uint16_t tmsval, uint16_t *tdov
         *tdoval >>= 1;
 
         // return TDO status
-        if (TDO_IN_SET) {
+        if (TDO_GET()) {
             *tdoval = *tdoval | 0x8000;
         }
-        TCLK_RESET(); // TCLK Low
+        TCK_RESET(); // TCLK Low
     }
 
     *tdoval = ByteSwap16(*tdoval);
@@ -450,7 +450,7 @@ int32_t t_special_feature (uint8_t   sub_cmd_num,   // Special feature number (s
         break;
     case 0x00: // Get value of the TDO line
                // Bit7  TDO
-        if (TDO_IN_SET) {
+        if (TDO_GET()) {
             pOutputBuffer[0] = 0x90;
         } else {
             pOutputBuffer[0] = 0x00;
@@ -462,9 +462,9 @@ int32_t t_special_feature (uint8_t   sub_cmd_num,   // Special feature number (s
     case 0x01: // Set values directly on JTAG Port (1)
                // Bit0  TDI
         if (pInputBuffer[0] & 0x01) {
-            TDI_OUT_SET();
+            TDI_SET();
         } else {
-            TDI_OUT_RESET();
+            TDI_RESET();
         } // Bit7  TMS
         if (pInputBuffer[0] & 0x80) {
             TMS_SET();
@@ -472,23 +472,23 @@ int32_t t_special_feature (uint8_t   sub_cmd_num,   // Special feature number (s
             TMS_RESET();
         } // Bit1  TCLK
         if (pInputBuffer[0] & 0x02) {
-            TCLK_SET();
+            TCK_SET();
         } else {
-            TCLK_RESET();
+            TCK_RESET();
         } // Bit3  RESET
         if (pInputBuffer[0] & 0x08) {
-            SRST_RESET();
+            SRST_OUT_DEASSERT();
         } else {
-            SRST_SET();
+            SRST_OUT_ASSERT();
         };
         return (0); // success
         break;
     case 0x02: // Set value directly on JTAG Port (2)
                // Bit0  JCOMP (Inverted)
         if (pInputBuffer[0] & 0x01) {
-            TRST_RESET();
+            TRST_ASSERT();
         } else {
-            TRST_SET();
+            TRST_DEASSERT();
         }
         return (0); // success
         break;

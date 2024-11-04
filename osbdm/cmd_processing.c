@@ -34,9 +34,9 @@
 
 #include "cmd_processing.h" // command processing structures
 
+#include "board_custom.h"
 #include "commands.h" // BDM commands header file
 #include "jtag_eppc.h"
-#include "jtag_io.h"
 #include "targetAPI.h" // target API include file
 #include "usb_osbdm.h"
 #include "util.h"
@@ -115,7 +115,6 @@ void debug_command_exec ()
             uCmd = CMD_FAILED;       // get firmware version info bytes
         rcount = VERSION_BLOCK_SIZE; // number of bytes to return (including header bytes)
         break;
-
 
     case CMD_BDM_INIT:
         if (t_init())

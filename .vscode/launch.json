@@ -15,6 +15,7 @@
             "showDevDebugOutput": "none",
             "interface": "jtag",
             "servertype": "jlink",
+            "serialNumber": "1120000001",
             "liveWatch": {
                 "enabled": true,
                 "samplesPerSecond": 3

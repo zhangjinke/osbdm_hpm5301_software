@@ -26,6 +26,10 @@ sdk_app_inc(application/include)
 sdk_app_src(application/source/main.c)
 sdk_app_src(application/source/usb_osbdm.c)
 
+# Board
+sdk_app_inc(board/include)
+sdk_app_src(board/source/board_custom.c)
+
 # EasyLogger
 sdk_app_inc(middleware/easylogger/inc)
 sdk_app_src(middleware/easylogger/port/elog_port.c)
@@ -56,4 +60,4 @@ sdk_app_src(osbdm/cmd_processing.c)
 sdk_app_src(osbdm/jtag_eppc.c)
 sdk_app_src(osbdm/util.c)
 
-# generate_ide_projects()
+generate_ide_projects()
